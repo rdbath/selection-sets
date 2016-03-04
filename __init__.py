@@ -1,19 +1,9 @@
-#-----------------------------------------------------------
-# Copyright (C) 2016 Nathan Woodrow
-#-----------------------------------------------------------
-# Licensed under the terms of GNU GPL 2
-# 
-# This program is free software; you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation; either version 2 of the License, or
-# (at your option) any later version.
-#---------------------------------------------------------------------
-
 from PyQt4.QtGui import *
 from PyQt4.QtCore import *
-from qgis.core import QgsMapLayerRegistry
+from qgis.core import QgsMapLayerRegistry, QgsProject, QgsMessageLog, QgsVectorLayer
 
 import images
+import json
 
 
 def classFactory(iface):
@@ -24,6 +14,7 @@ class SelectionSetWidget(QWidget):
     saveSet = pyqtSignal()
     saveSetAll = pyqtSignal()
     setSelected = pyqtSignal(dict)
+    modified = pyqtSignal()
 
     def __init__(self, parent=None):
         super(SelectionSetWidget, self).__init__(parent)
@@ -61,28 +52,56 @@ class SelectionSetWidget(QWidget):
     def deleteSet(self):
         current = self.setList.selectionModel().currentIndex()
         self.setModel.removeRow(current.row())
+        self.modified.emit()
 
     def _data_from_index(self, index):
         data = index.data(Qt.UserRole + 1)
         return data
 
-    def addSelectionSet(self, selectionset):
+    def addSelectionSet(self, selectionset, notify=True):
         name = ",".join(layer.name() for layer in selectionset.keys())
         length = sum(len(items) for items in selectionset.values())
-        item = QStandardItem("{} ({})".format(name, length))
+        name = "{} ({})".format(name, length)
+        self.itemFromData(name, selectionset, notify)
+
+    def itemFromData(self, name, selectionset, notify=True):
+        item = QStandardItem(name)
 
         data = {}
         for layer, ids in selectionset.iteritems():
-            data[layer.id()] = ids
+            # TODO This is just a hack because I'm lazy for now
+            if isinstance(layer, QgsVectorLayer):
+                data[layer.id()] = ids
+            else:
+                data[layer] = ids
 
         item.setData(data, Qt.UserRole + 1)
         self.setModel.appendRow(item)
+        if notify:
+            self.modified.emit()
 
     def _itemSelected(self, current, old):
         data = self._data_from_index(current)
         if data is None:
             return
         self.setSelected.emit(data)
+
+    def dataForSaving(self):
+        data = {}
+        for row in range(self.setModel.rowCount()):
+            item = self.setModel.item(row)
+            name = item.text()
+            itemdata = item.data()
+            data[name] = itemdata
+        return data
+
+    def setFromLoaded(self, data):
+        self.setModel.clear()
+        for name, itemdata in data.iteritems():
+            self.itemFromData(name, itemdata, notify=False)
+
+    def clear(self):
+        self.setModel.clear()
 
 
 class SelectionSetsPlugin:
@@ -94,6 +113,7 @@ class SelectionSetsPlugin:
         self.action.triggered.connect(self.run)
         self.dock = QDockWidget("Selection Sets", self.iface.mainWindow())
         self.setWidget = SelectionSetWidget()
+        self.setWidget.modified.connect(self.saveIntoProject)
         self.setWidget.saveSet.connect(self.saveSet)
         self.setWidget.saveSetAll.connect(self.saveSetAll)
         self.setWidget.setSelected.connect(self.updateSelection)
@@ -101,6 +121,8 @@ class SelectionSetsPlugin:
         self.iface.addDockWidget(Qt.RightDockWidgetArea, self.dock)
         self.dock.hide()
         self.iface.addToolBarIcon(self.action)
+        QgsProject.instance().readProject.connect(self.loadFromProject)
+        self.iface.newProjectCreated.connect(self.setWidget.clear)
 
     def unload(self):
         self.iface.removeToolBarIcon(self.action)
@@ -109,6 +131,20 @@ class SelectionSetsPlugin:
 
     def run(self):
         self.dock.show()
+
+    def saveIntoProject(self):
+        data = self.setWidget.dataForSaving()
+        datas = json.dumps(data)
+        QgsProject.instance().writeEntry("SelectionSets", "/sets", datas)
+
+    def loadFromProject(self):
+        datas = QgsProject.instance().readEntry("SelectionSets", "/sets")[0]
+        QgsMessageLog.logMessage(datas)
+        try:
+            data = json.loads(datas)
+            self.setWidget.setFromLoaded(data)
+        except ValueError:
+            self.setWidget.clear()
 
     def saveSet(self):
         layer = self.iface.activeLayer()

@@ -8,10 +8,7 @@
  - Save active layer set only
  - Save selections over all layers
  - Delete set
- 
- TODO
- 
- - Saving sets in project
+ - Saves in project
  
  Selections are changed in QGIS when selected in the list.
  
