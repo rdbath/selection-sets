@@ -13,6 +13,9 @@ from PyQt4.QtGui import *
 from PyQt4.QtCore import *
 from qgis.core import QgsMapLayerRegistry
 
+import images
+
+
 def classFactory(iface):
     return SelectionSetsPlugin(iface)
 
@@ -25,14 +28,15 @@ class SelectionSetWidget(QWidget):
     def __init__(self, parent=None):
         super(SelectionSetWidget, self).__init__(parent)
 
-        self.saveAllAction = QAction("Save selection set (All layers)", self)
-        self.saveAction = QAction("Save selection set (Active layer)", self)
-        self.deleteAction = QAction("Delete set", self)
+        self.saveAllAction = QAction(images.ADDALL, "Save selection set (All layers)", self)
+        self.saveAction = QAction(images.ADD, "Save selection set (Active layer)", self)
+        self.deleteAction = QAction(images.REMOVE, "Delete set", self)
         self.saveAllAction.triggered.connect(self.saveSetAll.emit)
         self.saveAction.triggered.connect(self.saveSet.emit)
         self.deleteAction.triggered.connect(self.deleteSet)
 
         self.menu = QMenu()
+        self.menu.addAction(self.saveAction)
         self.menu.addAction(self.saveAllAction)
         self.toolbar = QToolBar()
         self.saveButton = QToolButton()

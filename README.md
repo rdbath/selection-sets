@@ -12,6 +12,7 @@
  TODO
  
  - Saving sets in project
+ - Icons. Need icons
  
  Selections are changed in QGIS when selected in the list.
  
