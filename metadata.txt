@@ -1,7 +1,14 @@
 [general]
 name=Selection Sets
 description=Plugin for saving and loading selection sets for layers.
+about=Adds the ability to save and load sets of selections. Handy if you need need to come back to a active selection layer.
 version=1.0
 qgisMinimumVersion=2.0
 author=Nathan Woodrow
 email=madmanwoo@gmail.com
+icon=icon.png
+experimental=False
+homepage=https://github.com/NathanW2/selection-sets
+tracker=https://github.com/NathanW2/selection-sets
+repository=https://github.com/NathanW2/selection-sets
+
