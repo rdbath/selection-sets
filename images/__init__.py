@@ -1,4 +1,4 @@
-from PyQt4.QtGui import  QIcon
+from qgis.PyQt.QtGui import  QIcon
 import os
 
 

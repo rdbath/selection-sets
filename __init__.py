@@ -1,8 +1,12 @@
-from PyQt4.QtGui import *
-from PyQt4.QtCore import *
-from qgis.core import QgsMapLayerRegistry, QgsProject, QgsMessageLog, QgsVectorLayer
+from __future__ import absolute_import
+from builtins import range
+from builtins import object
+from qgis.PyQt.QtWidgets import QMenu, QAction, QWidget, QDockWidget, QToolBar, QToolButton, QListView, QVBoxLayout
+from qgis.PyQt.QtGui import QStandardItemModel, QStandardItem
+from qgis.PyQt.QtCore import Qt, QObject, pyqtSignal
+from qgis.core import QgsProject, QgsMessageLog, QgsVectorLayer
 
-import images
+from . import images
 import json
 
 
@@ -59,8 +63,8 @@ class SelectionSetWidget(QWidget):
         return data
 
     def addSelectionSet(self, selectionset, notify=True):
-        name = ",".join(layer.name() for layer in selectionset.keys())
-        length = sum(len(items) for items in selectionset.values())
+        name = ",".join(layer.name() for layer in list(selectionset.keys()))
+        length = sum(len(items) for items in list(selectionset.values()))
         name = "{} ({})".format(name, length)
         self.itemFromData(name, selectionset, notify)
 
@@ -68,7 +72,7 @@ class SelectionSetWidget(QWidget):
         item = QStandardItem(name)
 
         data = {}
-        for layer, ids in selectionset.iteritems():
+        for layer, ids in selectionset.items():
             # TODO This is just a hack because I'm lazy for now
             if isinstance(layer, QgsVectorLayer):
                 data[layer.id()] = ids
@@ -85,6 +89,7 @@ class SelectionSetWidget(QWidget):
         if data is None:
             return
         self.setSelected.emit(data)
+        print("jetzt")
 
     def dataForSaving(self):
         data = {}
@@ -97,14 +102,14 @@ class SelectionSetWidget(QWidget):
 
     def setFromLoaded(self, data):
         self.setModel.clear()
-        for name, itemdata in data.iteritems():
+        for name, itemdata in data.items():
             self.itemFromData(name, itemdata, notify=False)
 
     def clear(self):
         self.setModel.clear()
 
 
-class SelectionSetsPlugin:
+class SelectionSetsPlugin(object):
     def __init__(self, iface):
         self.iface = iface
 
@@ -148,22 +153,22 @@ class SelectionSetsPlugin:
 
     def saveSet(self):
         layer = self.iface.activeLayer()
-        ids = layer.selectedFeaturesIds()
+        ids = layer.selectedFeatureIds()
         data = {}
         data[layer] = ids
         self.setWidget.addSelectionSet(data)
 
     def saveSetAll(self):
         data = {}
-        for layer in QgsMapLayerRegistry.instance().mapLayers().values():
-            ids = layer.selectedFeaturesIds()
+        for layer in list(QgsProject.instance().mapLayers().values()):
+            ids = layer.selectedFeatureIds()
             if not ids:
                 continue
             data[layer] = ids
         self.setWidget.addSelectionSet(data)
 
     def updateSelection(self, data):
-        for layer in QgsMapLayerRegistry.instance().mapLayers().values():
+        for layer in list(QgsProject.instance().mapLayers().values()):
             if isinstance(layer, QgsVectorLayer):
                 layer.removeSelection()
             try:
