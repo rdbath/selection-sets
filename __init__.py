@@ -89,7 +89,6 @@ class SelectionSetWidget(QWidget):
         if data is None:
             return
         self.setSelected.emit(data)
-        print("jetzt")
 
     def dataForSaving(self):
         data = {}
